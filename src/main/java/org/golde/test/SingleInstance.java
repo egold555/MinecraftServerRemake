@@ -16,6 +16,8 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.golde.test.commands.Command;
+import org.golde.test.commands.CommandTest;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
 import com.github.steveice10.mc.protocol.MinecraftConstants;
@@ -37,6 +39,8 @@ import com.github.steveice10.mc.protocol.data.game.entity.type.MobType;
 import com.github.steveice10.mc.protocol.data.game.setting.Difficulty;
 import com.github.steveice10.mc.protocol.data.game.world.WorldType;
 import com.github.steveice10.mc.protocol.data.game.world.block.BlockState;
+import com.github.steveice10.mc.protocol.data.game.world.sound.BuiltinSound;
+import com.github.steveice10.mc.protocol.data.game.world.sound.SoundCategory;
 import com.github.steveice10.mc.protocol.data.message.ChatColor;
 import com.github.steveice10.mc.protocol.data.message.ChatFormat;
 import com.github.steveice10.mc.protocol.data.message.Message;
@@ -63,6 +67,7 @@ import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.Serv
 import com.github.steveice10.mc.protocol.packet.ingame.server.entity.spawn.ServerSpawnMobPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerBlockBreakAnimPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerChunkDataPacket;
+import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerPlayBuiltinSoundPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerSpawnPositionPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerUpdateTimePacket;
 import com.github.steveice10.mc.protocol.packet.login.client.LoginStartPacket;
@@ -108,7 +113,7 @@ public class SingleInstance {
 				session.send(new ServerSpawnPositionPacket(new Position(0, 0, 0)));
 				//http://wiki.vg/Protocol#Entity_Properties
 				session.send(new ServerPlayerAbilitiesPacket(true, true, true, true, 0.05F, 0.100000001490116f));
-				session.send(new ServerPlayerPositionRotationPacket(181, 255, 101, 0, 0, 0, PositionElement.YAW));
+				session.send(new ServerPlayerPositionRotationPacket(5, 255, 5, 0, 0, 0, PositionElement.YAW));
 				
 				
 				
@@ -124,7 +129,7 @@ public class SingleInstance {
 				for(int i = 0; i < 16; i++) {
 					Chunk chunk = new Chunk(true);
 					for(int x = 0; x < 16; x++) {
-						for(int y = 0; y < 16; y++) {
+						for(int y = 0; y < 5; y++) {
 							for(int z = 0; z < 16; z++) {
 								chunk.getBlockLight().fill(15);
 								chunk.getBlocks().set(x, y, z, new BlockState(95, i));
@@ -137,8 +142,8 @@ public class SingleInstance {
 				byte[] biomeData = new byte[256]; //BIOME
 				Arrays.fill(biomeData, (byte)12);
 				
-				for(int x = 0; x < 16; x++) {
-					for(int z = 0; z < 16; z++) {
+				for(int x = 0; x < 3; x++) {
+					for(int z = 0; z < 3; z++) {
 						session.send(new ServerChunkDataPacket(new Column(x, z, chunks, biomeData, new CompoundTag[0])));
 					}
 				}
@@ -166,11 +171,30 @@ public class SingleInstance {
 						if(event.getPacket() instanceof ClientChatPacket) {
 							ClientChatPacket chatPacket = event.getPacket();
 							
+							if(chatPacket.getMessage().charAt(0) == '/') {
+								boolean executed = false;
+								for(Command cmd : Command.COMMANDS) {
+									String comm = chatPacket.getMessage().substring(1, chatPacket.getMessage().length());
+									String[] split = comm.split("\\s+");
+									if(cmd.getName().equalsIgnoreCase(split[0])) {
+										cmd.execute(event.getSession());
+										executed = true;
+										break;
+									}
+								}
+								
+								if(!executed) {
+									event.getSession().send(new ServerChatPacket(new TextMessage("Unknown command!")));
+								}
+								return;
+							}
+							
 							if(chatPacket.getMessage().equalsIgnoreCase("test")) {
 								event.getSession().send(new ServerTitlePacket("Title", false));
 								event.getSession().send(new ServerTitlePacket("Sub", true));
 								event.getSession().send(new ServerChatPacket(new TextMessage("Executed.")));
-								event.getSession().send(new ServerSpawnMobPacket(1, UUID.randomUUID(), MobType.GUARDIAN, 181, 255, 101, 0, 0, 0, 0, 0, 0, new EntityMetadata[0]));
+								event.getSession().send(new ServerSpawnMobPacket(1, UUID.randomUUID(), MobType.GUARDIAN, 5, 255, 5, 0, 0, 0, 0, 0, 0, new EntityMetadata[0]));
+								event.getSession().send(new ServerPlayBuiltinSoundPacket(BuiltinSound.ENTITY_ENDERDRAGON_AMBIENT, SoundCategory.HOSTILE, 5, 255, 5, 1, 1));
 								return;
 							}
 							
@@ -198,6 +222,8 @@ public class SingleInstance {
 				}
 			}
 		});
+		
+		new CommandTest();
 
 		server.bind();
 		log("Server running: " + HOST + ":" + PORT);
