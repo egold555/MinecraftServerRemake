@@ -1,12 +1,3 @@
-# MCProtocolLib
-MCProtocolLib is a simple library for communicating with a Minecraft client/server. It aims to allow people to make custom bots, clients, or servers for Minecraft easily.
+# MinecraftServerRemake
 
-## Example Code
-See example/com/github/steveice10/mc/protocol/test
-
-## Building the Source
-MCProtocolLib uses Maven to manage dependencies. Simply run 'mvn clean install' in the source's directory.
-
-## License
-MCProtocolLib is licensed under the **[MIT license](http://www.opensource.org/licenses/mit-license.html)**.
-
+Custom made minecraft server made in java. Don't expect this to work as a normal server. It is just for me to create for fun and experiment around with Minecraft packets. Posting this to git to show how it works,. also because git is good. 
