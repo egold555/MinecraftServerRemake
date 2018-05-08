@@ -18,13 +18,25 @@ public abstract class Command {
 	
 	public abstract String getName();
 	
-	public abstract void execute(Session session, String[] args);
+	protected String[] getArgs() {
+		return new String[0];
+	}
 	
-	public final void sendChatMessage(Session session, String msg) {
+	public abstract void execute(Session session, String[] args) throws Exception;
+	
+	public final boolean hasEnoughArgs(Session session, String[] args) {
+		if(args.length < getArgs().length) {
+			sendChatMessage(session, "Not enough args! " + getName() + " " + getArgs());
+			return false;
+		}
+		return true;
+	}
+	
+	protected final void sendChatMessage(Session session, String msg) {
 		sendChatMessage(session, new TextMessage(msg));
 	}
 	
-	public final void sendChatMessage(Session session, Message msg) {
+	protected final void sendChatMessage(Session session, Message msg) {
 		session.send(new ServerChatPacket(msg));
 	}
 	

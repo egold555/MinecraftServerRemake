@@ -16,8 +16,11 @@ import java.util.UUID;
 
 import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.golde.test.commands.Command;
+import org.golde.test.commands.CommandGameMode;
 import org.golde.test.commands.CommandTest;
+import org.golde.test.util.StringUtils;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
 import com.github.steveice10.mc.protocol.MinecraftConstants;
@@ -177,9 +180,18 @@ public class SingleInstance {
 									String comm = chatPacket.getMessage().substring(1, chatPacket.getMessage().length());
 									String[] split = StringUtils.splitBySpace(comm);
 									if(cmd.getName().equalsIgnoreCase(split[0])) {
-										cmd.execute(event.getSession(), StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1));
-										executed = true;
-										break;
+										try {
+											executed = true;
+											cmd.execute(event.getSession(), StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1));
+											
+											break;
+										} catch (Exception e) {
+											event.getSession().send(new ServerChatPacket(new TextMessage(ExceptionUtils.getMessage(e))));
+											e.printStackTrace();
+											break;
+										}
+										
+										
 									}
 								}
 								
@@ -224,6 +236,7 @@ public class SingleInstance {
 		});
 		
 		new CommandTest();
+		new CommandGameMode();
 
 		server.bind();
 		log("Server running: " + HOST + ":" + PORT);

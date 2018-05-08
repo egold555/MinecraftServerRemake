@@ -1,4 +1,4 @@
-package org.golde.test;
+package org.golde.test.util;
 
 public class StringUtils {
 
