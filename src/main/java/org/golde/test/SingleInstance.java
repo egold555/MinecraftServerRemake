@@ -175,9 +175,9 @@ public class SingleInstance {
 								boolean executed = false;
 								for(Command cmd : Command.COMMANDS) {
 									String comm = chatPacket.getMessage().substring(1, chatPacket.getMessage().length());
-									String[] split = comm.split("\\s+");
+									String[] split = StringUtils.splitBySpace(comm);
 									if(cmd.getName().equalsIgnoreCase(split[0])) {
-										cmd.execute(event.getSession());
+										cmd.execute(event.getSession(), StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1));
 										executed = true;
 										break;
 									}

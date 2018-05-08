@@ -18,7 +18,7 @@ public abstract class Command {
 	
 	public abstract String getName();
 	
-	public abstract void execute(Session session);
+	public abstract void execute(Session session, String[] args);
 	
 	public final void sendChatMessage(Session session, String msg) {
 		sendChatMessage(session, new TextMessage(msg));
