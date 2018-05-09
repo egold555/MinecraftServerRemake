@@ -2,11 +2,11 @@ package org.golde.test.util;
 
 public class StringUtils {
 
-	public static String[] splitBySpace(String in) {
+	public static final String[] splitBySpace(String in) {
 		return in.split("\\s+");
 	}
 	
-	public static String[] nudgeArrayDownByXRemovingFirstToLast(String[] in, int remove) {
+	public static final String[] nudgeArrayDownByXRemovingFirstToLast(String[] in, int remove) {
 		if(remove >= in.length) {
 			return new String[0];
 		}

@@ -31,7 +31,13 @@ public class CommandGameMode extends Command {
 			}
 			
 			session.send(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
+			sendChatMessage(session, "Updated gamemode to: " + gm.name());
 		}
+	}
+	
+	@Override
+	public String[] onTabComplete(int index) {
+		return enumArrayToStringArray(GameMode.class);
 	}
 
 }

@@ -7,10 +7,8 @@ import static com.github.steveice10.mc.protocol.MinecraftConstants.SERVER_INFO_B
 import static com.github.steveice10.mc.protocol.MinecraftConstants.SERVER_LOGIN_HANDLER_KEY;
 import static com.github.steveice10.mc.protocol.MinecraftConstants.VERIFY_USERS_KEY;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,6 +53,7 @@ import com.github.steveice10.mc.protocol.data.status.VersionInfo;
 import com.github.steveice10.mc.protocol.data.status.handler.ServerInfoBuilder;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientChatPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientKeepAlivePacket;
+import com.github.steveice10.mc.protocol.packet.ingame.client.ClientTabCompletePacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionRotationPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerRotationPacket;
@@ -63,17 +62,14 @@ import com.github.steveice10.mc.protocol.packet.ingame.server.ServerChatPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerDifficultyPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerJoinGamePacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerPlayerListEntryPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerPluginMessagePacket;
+import com.github.steveice10.mc.protocol.packet.ingame.server.ServerTabCompletePacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerTitlePacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerAbilitiesPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.entity.player.ServerPlayerPositionRotationPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.entity.spawn.ServerSpawnMobPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerBlockBreakAnimPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerChunkDataPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerPlayBuiltinSoundPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerSpawnPositionPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerUpdateTimePacket;
-import com.github.steveice10.mc.protocol.packet.login.client.LoginStartPacket;
 import com.github.steveice10.opennbt.tag.builtin.CompoundTag;
 import com.github.steveice10.packetlib.Server;
 import com.github.steveice10.packetlib.Session;
@@ -117,18 +113,18 @@ public class SingleInstance {
 				//http://wiki.vg/Protocol#Entity_Properties
 				session.send(new ServerPlayerAbilitiesPacket(true, true, true, true, 0.05F, 0.100000001490116f));
 				session.send(new ServerPlayerPositionRotationPacket(5, 255, 5, 0, 0, 0, PositionElement.YAW));
-				
-				
-				
+
+
+
 				//Fooling around
 				session.send(new ServerBossBarPacket(UUID.randomUUID(), BossBarAction.ADD, new TextMessage("Testing123"), 0.4f, BossBarColor.YELLOW, BossBarDivision.NOTCHES_10, false, false));
 				//session.send(new ServerUpdateTimePacket(0, 16000));
-				
+
 				GameProfile profile = session.getFlag(MinecraftConstants.PROFILE_KEY);
 				session.send(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(profile, GameMode.CREATIVE, 1, new TextMessage(profile.getName()))}));
-				
+
 				Chunk[] chunks = new Chunk[16];
-				
+
 				for(int i = 0; i < 16; i++) {
 					Chunk chunk = new Chunk(true);
 					for(int x = 0; x < 16; x++) {
@@ -141,16 +137,16 @@ public class SingleInstance {
 					}
 					chunks[i] = chunk;
 				}
-				
+
 				byte[] biomeData = new byte[256]; //BIOME
 				Arrays.fill(biomeData, (byte)12);
-				
+
 				for(int x = 0; x < 3; x++) {
 					for(int z = 0; z < 3; z++) {
 						session.send(new ServerChunkDataPacket(new Column(x, z, chunks, biomeData, new CompoundTag[0])));
 					}
 				}
-				
+
 			}
 		});
 
@@ -167,41 +163,35 @@ public class SingleInstance {
 								!(event.getPacket() instanceof ClientPlayerPositionPacket) &&
 								!(event.getPacket() instanceof ClientPlayerRotationPacket) &&
 								!(event.getPacket() instanceof ClientPlayerPositionRotationPacket)) {
-							
+
 							log("Recieved Packet: " + ToStringBuilder.reflectionToString(event.getPacket(), ToStringStyle.SHORT_PREFIX_STYLE));
 						}
-						
+
 						if(event.getPacket() instanceof ClientChatPacket) {
-							ClientChatPacket chatPacket = event.getPacket();
-							
-							if(chatPacket.getMessage().charAt(0) == '/') {
-								boolean executed = false;
+							ClientChatPacket packet = event.getPacket();
+
+							if(packet.getMessage().charAt(0) == '/') {
 								for(Command cmd : Command.COMMANDS) {
-									String comm = chatPacket.getMessage().substring(1, chatPacket.getMessage().length());
+									String comm = packet.getMessage().substring(1, packet.getMessage().length());
 									String[] split = StringUtils.splitBySpace(comm);
 									if(cmd.getName().equalsIgnoreCase(split[0])) {
 										try {
-											executed = true;
 											cmd.execute(event.getSession(), StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1));
-											
-											break;
+											return;
 										} catch (Exception e) {
 											event.getSession().send(new ServerChatPacket(new TextMessage(ExceptionUtils.getMessage(e))));
 											e.printStackTrace();
-											break;
 										}
-										
-										
+
+
 									}
 								}
-								
-								if(!executed) {
-									event.getSession().send(new ServerChatPacket(new TextMessage("Unknown command!")));
-								}
+
+								event.getSession().send(new ServerChatPacket(new TextMessage("Unknown command!")));
 								return;
 							}
-							
-							if(chatPacket.getMessage().equalsIgnoreCase("test")) {
+
+							if(packet.getMessage().equalsIgnoreCase("test")) {
 								event.getSession().send(new ServerTitlePacket("Title", false));
 								event.getSession().send(new ServerTitlePacket("Sub", true));
 								event.getSession().send(new ServerChatPacket(new TextMessage("Executed.")));
@@ -209,15 +199,42 @@ public class SingleInstance {
 								event.getSession().send(new ServerPlayBuiltinSoundPacket(BuiltinSound.ENTITY_ENDERDRAGON_AMBIENT, SoundCategory.HOSTILE, 5, 255, 5, 1, 1));
 								return;
 							}
-							
+
 							GameProfile profile = event.getSession().getFlag(MinecraftConstants.PROFILE_KEY);
-							System.out.println(profile.getName() + ": " + chatPacket.getMessage());
+							System.out.println(profile.getName() + ": " + packet.getMessage());
 							Message msg = new TextMessage("Hello, ").setStyle(new MessageStyle().setColor(ChatColor.GREEN));
 							Message name = new TextMessage(profile.getName()).setStyle(new MessageStyle().setColor(ChatColor.AQUA).addFormat(ChatFormat.UNDERLINED));
 							Message end = new TextMessage("!");
 							msg.addExtra(name);
 							msg.addExtra(end);
 							event.getSession().send(new ServerChatPacket(msg));
+						}
+
+						if(event.getPacket() instanceof ClientTabCompletePacket) {
+							ClientTabCompletePacket packet = event.getPacket();
+							String rawText = packet.getText();
+
+							if(rawText.length() >= 1 && rawText.charAt(0) == '/' && !rawText.contains(" ")) {
+								List<String> sortedCommands =new ArrayList<String>();
+								for(int i=0; i < Command.COMMANDS.size(); i++) {
+									if(Command.COMMANDS.get(i).getName().toLowerCase().startsWith(rawText.substring(1, rawText.length()).toLowerCase())) {
+										sortedCommands.add("/" + Command.COMMANDS.get(i).getName());
+									}
+								}
+								event.getSession().send(new ServerTabCompletePacket(sortedCommands.toArray(new String[0])));
+								return;
+							}
+
+							String[] split = StringUtils.splitBySpace(rawText.substring(1, packet.getText().length()));
+							for(Command cmd : Command.COMMANDS) {
+								if(cmd.getName().equalsIgnoreCase(split[0])){
+									String[] toSend = cmd.onTabComplete(StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1).length);
+									if(toSend != null) {
+										event.getSession().send(new ServerTabCompletePacket(toSend));
+										return;
+									}
+								}
+							}
 						}
 					}
 				});
@@ -234,7 +251,7 @@ public class SingleInstance {
 				}
 			}
 		});
-		
+
 		new CommandTest();
 		new CommandGameMode();
 
