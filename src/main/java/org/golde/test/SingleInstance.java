@@ -18,6 +18,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.golde.test.commands.Command;
 import org.golde.test.commands.CommandEffect;
 import org.golde.test.commands.CommandGameMode;
+import org.golde.test.commands.CommandHelp;
+import org.golde.test.commands.CommandPlaySound;
+import org.golde.test.commands.CommandSummon;
 import org.golde.test.commands.CommandTest;
 import org.golde.test.util.StringUtils;
 
@@ -178,12 +181,17 @@ public class SingleInstance {
 									String comm = packet.getMessage().substring(1, packet.getMessage().length());
 									String[] split = StringUtils.splitBySpace(comm);
 									if(cmd.getName().equalsIgnoreCase(split[0])) {
+										String[] args = StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1);
+										if(args.length < cmd.getArgs().length) {
+											cmd.notEnoughArgs(event.getSession());
+											return;
+										}
 										try {
-											cmd.execute(event.getSession(), StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1));
+											cmd.execute(event.getSession(), args);
 											return;
 										} catch (Exception e) {
 											event.getSession().send(new ServerChatPacket(new TextMessage(ExceptionUtils.getMessage(e))));
-											event.getSession().send(new ServerChatPacket(new TextMessage("Not enough args! /" + cmd.getName() + " " + Arrays.toString(cmd.getArgs()))));
+											cmd.notEnoughArgs(event.getSession());
 											e.printStackTrace();
 											return;
 										}
@@ -278,6 +286,10 @@ public class SingleInstance {
 		commands.add(new CommandTest());
 		commands.add(new CommandGameMode());
 		commands.add(new CommandEffect());
+		commands.add(new CommandSummon());
+		commands.add(new CommandPlaySound());
+		
+		commands.add(new CommandHelp(commands));
 		
 		server.bind();
 		log("Server running: " + HOST + ":" + PORT);

@@ -1,8 +1,6 @@
 package org.golde.test.commands;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import com.github.steveice10.mc.protocol.data.message.Message;
 import com.github.steveice10.mc.protocol.data.message.TextMessage;
@@ -23,12 +21,8 @@ public abstract class Command {
 	
 	public abstract void execute(Session session, String[] args) throws Exception;
 	
-	public final boolean hasEnoughArgs(Session session, String[] args) {
-		if(args.length < getArgs().length) {
-			sendChatMessage(session, "Not enough args! " + getName() + " " + Arrays.toString(getArgs()));
-			return false;
-		}
-		return true;
+	public void notEnoughArgs(Session session) {
+		sendChatMessage(session, "Not enough args! " + getName() + " " + Arrays.toString(getArgs()));
 	}
 	
 	protected static final void sendChatMessage(Session session, String msg) {

@@ -11,7 +11,7 @@ public class CommandGameMode extends Command {
 	public String getName() {
 		return "gamemode";
 	}
-	
+
 	@Override
 	public String[] getArgs() {
 		return new String[] {"mode"};
@@ -19,22 +19,11 @@ public class CommandGameMode extends Command {
 
 	@Override
 	public void execute(Session session, String[] args) {
-		if(hasEnoughArgs(session, args)) {
-			
-			GameMode gm;
-			
-			try {
-				gm = GameMode.values()[Integer.parseInt(args[0])];
-			} 
-			catch(NumberFormatException e) {
-				gm = GameMode.valueOf(args[0]);
-			}
-			
-			session.send(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
-			sendChatMessage(session, "Updated gamemode to: " + gm.name());
-		}
+		GameMode gm = GameMode.valueOf(args[0]);
+		session.send(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
+		sendChatMessage(session, "Updated gamemode to: " + gm.name());
 	}
-	
+
 	@Override
 	public String[] onTabComplete(int index) {
 		return enumArrayToStringArray(GameMode.class);

@@ -10,7 +10,7 @@ public class CommandEffect extends Command {
 	public String getName() {
 		return "effect";
 	}
-	
+
 	@Override
 	public String[] getArgs() {
 		return new String[] {"effect", "duration", "amplifier"};
@@ -20,7 +20,7 @@ public class CommandEffect extends Command {
 	public void execute(Session session, String[] args) throws Exception {
 		session.send(new ServerEntityEffectPacket(0, Effect.valueOf(args[0]), Integer.parseInt(args[2]), Integer.parseInt(args[1]), true, true));
 	}
-	
+
 	@Override
 	public String[] onTabComplete(int index) {
 		if(index == 0) {
