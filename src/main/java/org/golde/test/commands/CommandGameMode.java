@@ -13,7 +13,7 @@ public class CommandGameMode extends Command {
 	}
 	
 	@Override
-	protected String[] getArgs() {
+	public String[] getArgs() {
 		return new String[] {"mode"};
 	}
 

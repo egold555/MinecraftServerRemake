@@ -16,6 +16,7 @@ import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.golde.test.commands.Command;
+import org.golde.test.commands.CommandEffect;
 import org.golde.test.commands.CommandGameMode;
 import org.golde.test.commands.CommandTest;
 import org.golde.test.util.StringUtils;
@@ -86,6 +87,8 @@ public class SingleInstance {
 	private final int PORT = 25560;
 
 	private Server server;
+	private List<Command> commands = new ArrayList<Command>();
+	
 
 	public void run() throws Exception {
 		log("Run");
@@ -171,7 +174,7 @@ public class SingleInstance {
 							ClientChatPacket packet = event.getPacket();
 
 							if(packet.getMessage().charAt(0) == '/') {
-								for(Command cmd : Command.COMMANDS) {
+								for(Command cmd : commands) {
 									String comm = packet.getMessage().substring(1, packet.getMessage().length());
 									String[] split = StringUtils.splitBySpace(comm);
 									if(cmd.getName().equalsIgnoreCase(split[0])) {
@@ -180,7 +183,9 @@ public class SingleInstance {
 											return;
 										} catch (Exception e) {
 											event.getSession().send(new ServerChatPacket(new TextMessage(ExceptionUtils.getMessage(e))));
+											event.getSession().send(new ServerChatPacket(new TextMessage("Not enough args! /" + cmd.getName() + " " + Arrays.toString(cmd.getArgs()))));
 											e.printStackTrace();
+											return;
 										}
 
 
@@ -216,9 +221,9 @@ public class SingleInstance {
 
 							if(rawText.length() >= 1 && rawText.charAt(0) == '/' && !rawText.contains(" ")) {
 								List<String> sortedCommands =new ArrayList<String>();
-								for(int i=0; i < Command.COMMANDS.size(); i++) {
-									if(Command.COMMANDS.get(i).getName().toLowerCase().startsWith(rawText.substring(1, rawText.length()).toLowerCase())) {
-										sortedCommands.add("/" + Command.COMMANDS.get(i).getName());
+								for(int i=0; i < commands.size(); i++) {
+									if(commands.get(i).getName().toLowerCase().startsWith(rawText.substring(1, rawText.length()).toLowerCase())) {
+										sortedCommands.add("/" + commands.get(i).getName());
 									}
 								}
 								event.getSession().send(new ServerTabCompletePacket(sortedCommands.toArray(new String[0])));
@@ -226,7 +231,7 @@ public class SingleInstance {
 							}
 
 							String[] split = StringUtils.splitBySpace(rawText.substring(1, packet.getText().length()));
-							for(Command cmd : Command.COMMANDS) {
+							for(Command cmd : commands) {
 								if(cmd.getName().equalsIgnoreCase(split[0])){
 									String[] toSend = cmd.onTabComplete(StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1).length);
 									if(toSend != null) {
@@ -252,9 +257,10 @@ public class SingleInstance {
 			}
 		});
 
-		new CommandTest();
-		new CommandGameMode();
-
+		commands.add(new CommandTest());
+		commands.add(new CommandGameMode());
+		commands.add(new CommandEffect());
+		
 		server.bind();
 		log("Server running: " + HOST + ":" + PORT);
 

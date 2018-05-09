@@ -10,16 +10,10 @@ import com.github.steveice10.mc.protocol.packet.ingame.server.ServerChatPacket;
 import com.github.steveice10.packetlib.Session;
 
 public abstract class Command {
-	
-	public Command() {
-		COMMANDS.add(this);
-	}
 
-	public static List<Command> COMMANDS = new ArrayList<Command>();
-	
 	public abstract String getName();
 	
-	protected String[] getArgs() {
+	public String[] getArgs() {
 		return new String[0];
 	}
 	
@@ -45,7 +39,7 @@ public abstract class Command {
 		session.send(new ServerChatPacket(msg));
 	}
 	
-	protected static final String[] enumArrayToStringArray(Class<? extends Enum> enumType){
+	protected static final String[] enumArrayToStringArray(Class<? extends Enum<?>> enumType){
 		String[] toReturn = new String[enumType.getEnumConstants().length];
 		
 		for(int i = 0; i < toReturn.length; i++) {
