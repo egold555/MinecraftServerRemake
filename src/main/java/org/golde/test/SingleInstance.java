@@ -233,9 +233,27 @@ public class SingleInstance {
 							String[] split = StringUtils.splitBySpace(rawText.substring(1, packet.getText().length()));
 							for(Command cmd : commands) {
 								if(cmd.getName().equalsIgnoreCase(split[0])){
-									String[] toSend = cmd.onTabComplete(StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1).length);
+									String[] args = StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1);
+									int argumentIndex = args.length - 1;
+									if (rawText.endsWith(" ")) {
+										argumentIndex += 1;
+									}
+									
+									String[] toSend = cmd.onTabComplete(argumentIndex);
 									if(toSend != null) {
-										event.getSession().send(new ServerTabCompletePacket(toSend));
+										if (rawText.endsWith(" ")) {
+											event.getSession().send(new ServerTabCompletePacket(toSend));
+										}
+										else {
+											String lastSplit = split[split.length -1];
+											List<String> sortedArgs =new ArrayList<String>();
+											for(int i=0; i < toSend.length; i++) {
+												if(toSend[i].toLowerCase().startsWith(lastSplit.toLowerCase())) {
+													sortedArgs.add(toSend[i]);
+												}
+											}
+											event.getSession().send(new ServerTabCompletePacket(sortedArgs.toArray(new String[0])));
+										}
 										return;
 									}
 								}
