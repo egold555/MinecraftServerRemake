@@ -9,6 +9,7 @@ import static com.github.steveice10.mc.protocol.MinecraftConstants.VERIFY_USERS_
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,6 +23,9 @@ import org.golde.test.commands.CommandHelp;
 import org.golde.test.commands.CommandPlaySound;
 import org.golde.test.commands.CommandSummon;
 import org.golde.test.commands.CommandTest;
+import org.golde.test.entities.Entity;
+import org.golde.test.entities.EntityPlayer;
+import org.golde.test.util.Location;
 import org.golde.test.util.StringUtils;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
@@ -58,6 +62,7 @@ import com.github.steveice10.mc.protocol.data.status.handler.ServerInfoBuilder;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientChatPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientKeepAlivePacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientTabCompletePacket;
+import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerMovementPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionRotationPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerRotationPacket;
@@ -91,7 +96,8 @@ public class SingleInstance {
 
 	private Server server;
 	private List<Command> commands = new ArrayList<Command>();
-	
+	private HashMap<Integer, Entity> entities = new HashMap<Integer, Entity>();
+
 
 	public void run() throws Exception {
 		log("Run");
@@ -111,23 +117,39 @@ public class SingleInstance {
 			@Override
 			public void loggedIn(Session session) {
 				//DO NOT TOUCH
+
+				//get new id, and add them as a new entity to the server
+				final int entityId = getFreeEntityId();
+				final EntityPlayer player = new EntityPlayer(entityId, session);
+				entities.put(entityId, player);
+
 				//http://wiki.vg/Protocol_FAQ#What.27s_the_normal_login_sequence_for_a_client.3F
-				session.send(new ServerJoinGamePacket(0, false, GameMode.CREATIVE, 0, Difficulty.PEACEFUL, 100, WorldType.DEFAULT, false));
+				session.send(new ServerJoinGamePacket(entityId, false, GameMode.CREATIVE, 0, Difficulty.PEACEFUL, 100, WorldType.DEFAULT, false));
 				//session.send(new ServerPluginMessagePacket("MC|Brand", "vanilla".getBytes()));
 				session.send(new ServerDifficultyPacket(Difficulty.PEACEFUL));
 				session.send(new ServerSpawnPositionPacket(new Position(0, 0, 0)));
 				//http://wiki.vg/Protocol#Entity_Properties
 				session.send(new ServerPlayerAbilitiesPacket(true, true, true, true, 0.05F, 0.100000001490116f));
-				session.send(new ServerPlayerPositionRotationPacket(5, 255, 5, 0, 0, 0, PositionElement.YAW));
+				session.send(new ServerPlayerPositionRotationPacket(5, 255, 5, 0, 0, 0, new PositionElement[0]));
 
+				for(EntityPlayer other : getOnlinePlayers()) {
+					other.getSession().send(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
+					other.sendChatMessage(new TextMessage(player.getName() + " joined the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
+				}
 
+				//Add every person to the game for the new person who just joined
+				for(EntityPlayer other : getOnlinePlayers()) {
+					if(other != player) {
+						player.getSession().send(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(other.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(other.getName()))}));
+					}
+				}
+				
+				log(player.getName() + " joined the game");
 
 				//Fooling around
 				session.send(new ServerBossBarPacket(UUID.randomUUID(), BossBarAction.ADD, new TextMessage("Testing123"), 0.4f, BossBarColor.YELLOW, BossBarDivision.NOTCHES_10, false, false));
 				//session.send(new ServerUpdateTimePacket(0, 16000));
 
-				GameProfile profile = session.getFlag(MinecraftConstants.PROFILE_KEY);
-				session.send(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(profile, GameMode.CREATIVE, 1, new TextMessage(profile.getName()))}));
 
 				Chunk[] chunks = new Chunk[16];
 
@@ -172,6 +194,14 @@ public class SingleInstance {
 
 							log("Recieved Packet: " + ToStringBuilder.reflectionToString(event.getPacket(), ToStringStyle.SHORT_PREFIX_STYLE));
 						}
+						
+						if(event.getPacket() instanceof ClientPlayerMovementPacket) {
+							ClientPlayerMovementPacket packet = event.getPacket();
+							EntityPlayer player = getPlayer(event.getSession());
+							player.setLoccation(new Location(packet.getX(), packet.getY(), packet.getZ(), packet.getYaw(), packet.getPitch()));
+						}
+						
+						
 
 						if(event.getPacket() instanceof ClientChatPacket) {
 							ClientChatPacket packet = event.getPacket();
@@ -246,7 +276,7 @@ public class SingleInstance {
 									if (rawText.endsWith(" ")) {
 										argumentIndex += 1;
 									}
-									
+
 									String[] toSend = cmd.onTabComplete(argumentIndex);
 									if(toSend != null) {
 										if (rawText.endsWith(" ")) {
@@ -275,10 +305,18 @@ public class SingleInstance {
 			public void sessionRemoved(SessionRemovedEvent event) {
 				MinecraftProtocol protocol = (MinecraftProtocol) event.getSession().getPacketProtocol();
 				if(protocol.getSubProtocol() == SubProtocol.GAME) {
-					//System.out.println("Closing server.");
-					//event.getServer().close();
-					GameProfile profile = event.getSession().getFlag(MinecraftConstants.PROFILE_KEY);
-					log(profile.getName() + " left the game");
+
+					EntityPlayer player = (EntityPlayer) entities.get(event.getSession());
+
+					//remove player from tab list and from game with packets
+					for(EntityPlayer other : getOnlinePlayers()) {
+						other.getSession().send(new ServerPlayerListEntryPacket(PlayerListEntryAction.REMOVE_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
+						other.sendChatMessage(new TextMessage(player.getName() + " joined the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
+						
+					}
+
+					log(player.getName() + " left the game");
+					entities.remove(getPlayer(event.getSession()).getId());
 				}
 			}
 		});
@@ -288,9 +326,9 @@ public class SingleInstance {
 		commands.add(new CommandEffect());
 		commands.add(new CommandSummon());
 		commands.add(new CommandPlaySound());
-		
+
 		commands.add(new CommandHelp(commands));
-		
+
 		server.bind();
 		log("Server running: " + HOST + ":" + PORT);
 
@@ -307,6 +345,29 @@ public class SingleInstance {
 
 	private void log(String msg) {
 		System.out.println(msg);
+	}
+
+	private int getFreeEntityId() {
+		return entities.size()+1;
+	}
+
+	private List<EntityPlayer> getOnlinePlayers(){
+		List<EntityPlayer> players = new ArrayList<EntityPlayer>();
+		for(Entity entity : entities.values()) {
+			if(entity instanceof EntityPlayer) {
+				players.add((EntityPlayer)entity);
+			}
+		}
+		return players;
+	}
+	
+	private EntityPlayer getPlayer(Session session) {
+		for(EntityPlayer player : getOnlinePlayers()) {
+			if(player.getSession() == session) {
+				return player;
+			}
+		}
+		return null;
 	}
 
 }
