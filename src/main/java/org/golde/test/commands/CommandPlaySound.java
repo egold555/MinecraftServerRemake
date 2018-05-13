@@ -1,6 +1,7 @@
 package org.golde.test.commands;
 
 import org.golde.test.entities.EntityPlayer;
+import org.golde.test.util.PacketManager;
 
 import com.github.steveice10.mc.protocol.data.game.world.sound.BuiltinSound;
 import com.github.steveice10.mc.protocol.data.game.world.sound.SoundCategory;
@@ -20,7 +21,7 @@ public class CommandPlaySound extends Command {
 
 	@Override
 	public void execute(EntityPlayer player, String[] args) throws Exception {
-		player.sendPacket(new ServerPlayBuiltinSoundPacket(BuiltinSound.valueOf(args[0]), SoundCategory.valueOf(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4]), Float.parseFloat(args[5]), Float.parseFloat(args[6])));
+		PacketManager.Players.sendPacketToEveryone(new ServerPlayBuiltinSoundPacket(BuiltinSound.valueOf(args[0]), SoundCategory.valueOf(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4]), Float.parseFloat(args[5]), Float.parseFloat(args[6])));
 	}
 	
 	@Override

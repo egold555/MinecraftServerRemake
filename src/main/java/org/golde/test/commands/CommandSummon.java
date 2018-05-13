@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.golde.test._Main;
 import org.golde.test.entities.EntityPlayer;
+import org.golde.test.util.PacketManager;
 
 import com.github.steveice10.mc.protocol.data.game.entity.metadata.EntityMetadata;
 import com.github.steveice10.mc.protocol.data.game.entity.type.MobType;
@@ -23,7 +24,7 @@ public class CommandSummon extends Command {
 
 	@Override
 	public void execute(EntityPlayer player, String[] args) throws Exception {
-		player.sendPacket(new ServerSpawnMobPacket(_Main.getInstance().getFreeEntityId(), UUID.randomUUID(), MobType.valueOf(args[0]), Float.parseFloat(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), 0, 0, 0, 0, 0, 0, new EntityMetadata[0]));
+		PacketManager.Players.sendPacketToEveryone(new ServerSpawnMobPacket(_Main.getInstance().getFreeEntityId(), UUID.randomUUID(), MobType.valueOf(args[0]), Float.parseFloat(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), 0, 0, 0, 0, 0, 0, new EntityMetadata[0]));
 	}
 	
 	@Override

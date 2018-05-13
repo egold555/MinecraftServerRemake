@@ -1,6 +1,7 @@
 package org.golde.test.commands;
 
 import org.golde.test.entities.EntityPlayer;
+import org.golde.test.util.PacketManager;
 
 import com.github.steveice10.mc.protocol.data.game.entity.Effect;
 import com.github.steveice10.mc.protocol.packet.ingame.server.entity.ServerEntityEffectPacket;
@@ -19,7 +20,7 @@ public class CommandEffect extends Command {
 
 	@Override
 	public void execute(EntityPlayer player, String[] args) throws Exception {
-		player.sendPacket(new ServerEntityEffectPacket(player.getId(), Effect.valueOf(args[0]), Integer.parseInt(args[2]), Integer.parseInt(args[1]), true, true));
+		PacketManager.Players.sendPacketTo(player, new ServerEntityEffectPacket(player.getId(), Effect.valueOf(args[0]), Integer.parseInt(args[2]), Integer.parseInt(args[1]), false, true));
 	}
 
 	@Override

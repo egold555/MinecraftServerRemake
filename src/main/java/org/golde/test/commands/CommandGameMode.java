@@ -1,6 +1,7 @@
 package org.golde.test.commands;
 
 import org.golde.test.entities.EntityPlayer;
+import org.golde.test.util.PacketManager;
 
 import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import com.github.steveice10.mc.protocol.data.game.world.notify.ClientNotification;
@@ -21,7 +22,7 @@ public class CommandGameMode extends Command {
 	@Override
 	public void execute(EntityPlayer player, String[] args) {
 		GameMode gm = GameMode.valueOf(args[0]);
-		player.sendPacket(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
+		PacketManager.Players.sendPacketTo(player, new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
 		player.sendChatMessage("Updated gamemode to: " + gm.name());
 	}
 

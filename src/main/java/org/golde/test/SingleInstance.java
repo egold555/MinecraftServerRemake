@@ -26,6 +26,8 @@ import org.golde.test.commands.CommandTest;
 import org.golde.test.entities.Entity;
 import org.golde.test.entities.EntityPlayer;
 import org.golde.test.util.Location;
+import org.golde.test.util.Log;
+import org.golde.test.util.PacketManager;
 import org.golde.test.util.StringUtils;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
@@ -67,7 +69,6 @@ import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlaye
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerPositionRotationPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.client.player.ClientPlayerRotationPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.client.world.ClientTeleportConfirmPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerBossBarPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerChatPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerDifficultyPacket;
@@ -105,7 +106,7 @@ public class SingleInstance {
 
 
 	public void run() throws Exception {
-		log("Run");
+		Log.dbg("Program Start");
 
 		server = new Server(HOST, PORT, MinecraftProtocol.class, new TcpSessionFactory());
 		server.setGlobalFlag(VERIFY_USERS_KEY, false);
@@ -140,7 +141,7 @@ public class SingleInstance {
 
 
 
-				log(player.getName() + " joined the game");
+				Log.info(player.getName() + " joined the game");
 
 				//Fooling around
 				session.send(new ServerBossBarPacket(UUID.randomUUID(), BossBarAction.ADD, new TextMessage("Testing123"), 0.4f, BossBarColor.YELLOW, BossBarDivision.NOTCHES_10, false, false));
@@ -171,25 +172,11 @@ public class SingleInstance {
 					}
 				}
 
-
-				for(EntityPlayer other : getOnlinePlayers()) {
-
-					other.sendChatMessage(new TextMessage(player.getName() + " joined the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
-					other.sendPacket(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
-
-
-
-					//send packet that player joined the game to the rest of everyone on
-					if(other != player) {
-						for(Packet packet : player.getSpawnPackets()) {
-							other.sendPacket(packet);
-							other.sendChatMessage("Spawning packet " + packet.getClass().getSimpleName() + " sent! (" + player.getName() + ")");
-						}
-
-						player.sendPacket(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(other.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(other.getName()))}));
-					}
-
-
+				PacketManager.Players.sendChatMessageToEveryone(new TextMessage(player.getName() + " joined the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
+				PacketManager.Players.sendPacketToEveryone(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
+				
+				for(Packet packet : player.getSpawnPackets()) {
+					PacketManager.Players.sendPacketToEveryoneExcept(player, packet);
 				}
 
 			}
@@ -208,7 +195,7 @@ public class SingleInstance {
 								!(event.getPacket() instanceof ClientPlayerPositionPacket) &&
 								!(event.getPacket() instanceof ClientPlayerRotationPacket) &&
 								!(event.getPacket() instanceof ClientPlayerPositionRotationPacket)) {
-							log("Recieved Packet: " + ToStringBuilder.reflectionToString(event.getPacket(), ToStringStyle.SHORT_PREFIX_STYLE));
+							Log.packetIn(Log.toStringObj(event.getPacket()));
 						}
 						
 						
@@ -231,13 +218,12 @@ public class SingleInstance {
 						if(event.getPacket() instanceof ClientPluginMessagePacket) {
 							
 							for(EntityPlayer other : getOnlinePlayers()) {
-								if(other != player) {
-									for(Packet packet : other.getSpawnPackets()) {
-										player.sendPacket(packet);
-										player.sendChatMessage("Spawning packet " + packet.getClass().getSimpleName() + " sent! (" + other.getName() + ")");
-									}
+								for(Packet packet : other.getSpawnPackets()) {
+									PacketManager.Players.sendPacketToEveryoneExcept(other, packet);
+									PacketManager.Players.sendChatMessageToEveryoneExcept(other, "Spawning packet " + packet.getClass().getSimpleName() + " sent! (" + other.getName() + ")");
 								}
 							}
+							
 						}
 
 						if(event.getPacket() instanceof ClientPlayerMovementPacket) {
@@ -288,7 +274,7 @@ public class SingleInstance {
 							}
 
 							GameProfile profile = event.getSession().getFlag(MinecraftConstants.PROFILE_KEY);
-							System.out.println(profile.getName() + ": " + packet.getMessage());
+							Log.info("[CHAT] " + profile.getName() + ": " + packet.getMessage());
 							Message msg = new TextMessage("Hello, ").setStyle(new MessageStyle().setColor(ChatColor.GREEN));
 							Message name = new TextMessage(profile.getName()).setStyle(new MessageStyle().setColor(ChatColor.AQUA).addFormat(ChatFormat.UNDERLINED));
 							Message end = new TextMessage("!");
@@ -350,16 +336,15 @@ public class SingleInstance {
 				MinecraftProtocol protocol = (MinecraftProtocol) event.getSession().getPacketProtocol();
 				if(protocol.getSubProtocol() == SubProtocol.GAME) {
 
-					EntityPlayer player = (EntityPlayer) entities.get(event.getSession());
+					EntityPlayer player = getPlayer(event.getSession());
 
 					//remove player from tab list and from game with packets
+					PacketManager.Players.sendPacketToEveryone(new ServerPlayerListEntryPacket(PlayerListEntryAction.REMOVE_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
 					for(EntityPlayer other : getOnlinePlayers()) {
-						other.sendPacket(new ServerPlayerListEntryPacket(PlayerListEntryAction.REMOVE_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
 						other.sendChatMessage(new TextMessage(player.getName() + " left the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
-
 					}
 
-					log(player.getName() + " left the game");
+					Log.info(player.getName() + " left the game");
 					entities.remove(getPlayer(event.getSession()).getId());
 				}
 			}
@@ -374,22 +359,18 @@ public class SingleInstance {
 		commands.add(new CommandHelp(commands));
 
 		server.bind();
-		log("Server running: " + HOST + ":" + PORT);
+		Log.info("Server running: " + HOST + ":" + PORT);
 
 		while(server.isListening()) {
 			/*Do Nothing*/
 			Thread.sleep(1);
 		}
 
-		log("End");
+		Log.dbg("End");
 	}
 
 
 	//Utils
-
-	public void log(String msg) {
-		System.out.println(msg);
-	}
 
 	public int getFreeEntityId() {
 		return entities.size()+1;

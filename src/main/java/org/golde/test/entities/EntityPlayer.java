@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.golde.test.util.Location;
+import org.golde.test.util.PacketManager;
 
 import com.github.steveice10.mc.auth.data.GameProfile;
 import com.github.steveice10.mc.protocol.MinecraftConstants;
@@ -32,9 +33,9 @@ public class EntityPlayer extends EntityLiving {
 		return session;
 	}
 	
-	public void sendPacket(Packet packet) {
+	/*public void sendPacket(Packet packet) {
 		session.send(packet);
-	}
+	}*/
 	
 	public GameProfile getGameProfile() {
 		return gameProfile;
@@ -48,12 +49,13 @@ public class EntityPlayer extends EntityLiving {
 		return gameProfile.getName();
 	}
 	
+	@Deprecated
 	public void sendChatMessage(String msg) {
-		sendChatMessage(new TextMessage(msg));
+		PacketManager.Players.sendChatMessageTo(this, msg);
 	}
 	
 	public void sendChatMessage(Message msg) {
-		session.send(new ServerChatPacket(msg));
+		PacketManager.Players.sendChatMessageTo(this, msg);
 	}
 	
 	@Override
