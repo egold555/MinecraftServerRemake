@@ -53,7 +53,7 @@ public class PacketManager {
 		
 		@Deprecated
 		public static void sendChatMessageToEveryoneExcept(EntityPlayer except, String msg) {
-			sendChatMessageToEveryone(new TextMessage(msg));
+			sendChatMessageToEveryoneExcept(except, new TextMessage(msg));
 		}
 		
 		public static void sendChatMessageToEveryoneExcept(EntityPlayer except, Message msg) {

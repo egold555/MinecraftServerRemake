@@ -2,6 +2,7 @@ package org.golde.test.commands;
 
 import java.util.List;
 
+import org.golde.test._Main;
 import org.golde.test.entities.EntityPlayer;
 
 public class CommandHelp extends Command {
@@ -19,7 +20,11 @@ public class CommandHelp extends Command {
 
 	@Override
 	public void execute(EntityPlayer player, String[] args) throws Exception {
-		player.sendChatMessage("There are " + registered.size() + " commands registered. That's all I know. Try /<tab> ?");
+		String toSend = "Commands: \n";
+		for(Command cmd: _Main.getInstance().getCommands()) {
+			toSend += "  /" + cmd.getName() + "\n";
+		}
+		player.sendChatMessage(toSend);
 	}
 
 }

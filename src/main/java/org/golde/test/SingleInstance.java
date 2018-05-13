@@ -22,6 +22,7 @@ import org.golde.test.commands.CommandGameMode;
 import org.golde.test.commands.CommandHelp;
 import org.golde.test.commands.CommandPlaySound;
 import org.golde.test.commands.CommandSummon;
+import org.golde.test.commands.CommandTeleport;
 import org.golde.test.commands.CommandTest;
 import org.golde.test.entities.Entity;
 import org.golde.test.entities.EntityPlayer;
@@ -220,7 +221,6 @@ public class SingleInstance {
 							for(EntityPlayer other : getOnlinePlayers()) {
 								for(Packet packet : other.getSpawnPackets()) {
 									PacketManager.Players.sendPacketToEveryoneExcept(other, packet);
-									PacketManager.Players.sendChatMessageToEveryoneExcept(other, "Spawning packet " + packet.getClass().getSimpleName() + " sent! (" + other.getName() + ")");
 								}
 							}
 							
@@ -355,6 +355,7 @@ public class SingleInstance {
 		commands.add(new CommandEffect());
 		commands.add(new CommandSummon());
 		commands.add(new CommandPlaySound());
+		commands.add(new CommandTeleport());
 
 		commands.add(new CommandHelp(commands));
 
@@ -393,6 +394,10 @@ public class SingleInstance {
 			}
 		}
 		return null;
+	}
+	
+	public List<Command> getCommands() {
+		return commands;
 	}
 
 }
