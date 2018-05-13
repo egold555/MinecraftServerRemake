@@ -2,7 +2,7 @@ package org.golde.test.commands;
 
 import java.util.List;
 
-import com.github.steveice10.packetlib.Session;
+import org.golde.test.entities.EntityPlayer;
 
 public class CommandHelp extends Command {
 
@@ -18,8 +18,8 @@ public class CommandHelp extends Command {
 	}
 
 	@Override
-	public void execute(Session session, String[] args) throws Exception {
-		sendChatMessage(session, "There are " + registered.size() + " commands registered. That's all I know. Try /<tab> ?");
+	public void execute(EntityPlayer player, String[] args) throws Exception {
+		player.sendChatMessage("There are " + registered.size() + " commands registered. That's all I know. Try /<tab> ?");
 	}
 
 }

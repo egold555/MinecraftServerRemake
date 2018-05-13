@@ -2,10 +2,7 @@ package org.golde.test.commands;
 
 import java.util.Arrays;
 
-import com.github.steveice10.mc.protocol.data.message.Message;
-import com.github.steveice10.mc.protocol.data.message.TextMessage;
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerChatPacket;
-import com.github.steveice10.packetlib.Session;
+import org.golde.test.entities.EntityPlayer;
 
 public abstract class Command {
 
@@ -15,22 +12,14 @@ public abstract class Command {
 		return new String[0];
 	}
 	
-	public String[] onTabComplete(int index) {
+	public String[] onTabComplete(EntityPlayer player, int index) {
 		return null;
 	}
 	
-	public abstract void execute(Session session, String[] args) throws Exception;
+	public abstract void execute(EntityPlayer player, String[] args) throws Exception;
 	
-	public void notEnoughArgs(Session session) {
-		sendChatMessage(session, "Not enough args! " + getName() + " " + Arrays.toString(getArgs()));
-	}
-	
-	protected static final void sendChatMessage(Session session, String msg) {
-		sendChatMessage(session, new TextMessage(msg));
-	}
-	
-	protected static final void sendChatMessage(Session session, Message msg) {
-		session.send(new ServerChatPacket(msg));
+	public final void notEnoughArgs(EntityPlayer player) {
+		player.sendChatMessage("Not enough args! " + getName() + " " + Arrays.toString(getArgs()));
 	}
 	
 	protected static final String[] enumArrayToStringArray(Class<? extends Enum<?>> enumType){
@@ -42,5 +31,10 @@ public abstract class Command {
 		
 		return toReturn;
 	}
+	
+	protected final String[] doubleConvert(double num) {
+		return new String[] {String.valueOf(num)};
+	}
+
 	
 }

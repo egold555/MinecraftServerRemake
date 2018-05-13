@@ -1,9 +1,10 @@
 package org.golde.test.commands;
 
+import org.golde.test.entities.EntityPlayer;
+
 import com.github.steveice10.mc.protocol.data.game.world.sound.BuiltinSound;
 import com.github.steveice10.mc.protocol.data.game.world.sound.SoundCategory;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerPlayBuiltinSoundPacket;
-import com.github.steveice10.packetlib.Session;
 
 public class CommandPlaySound extends Command {
 
@@ -18,19 +19,32 @@ public class CommandPlaySound extends Command {
 	}
 
 	@Override
-	public void execute(Session session, String[] args) throws Exception {
-		session.send(new ServerPlayBuiltinSoundPacket(BuiltinSound.valueOf(args[0]), SoundCategory.valueOf(args[1]), Float.parseFloat(args[2]), Float.parseFloat(args[3]), Float.parseFloat(args[4]), Float.parseFloat(args[5]), Float.parseFloat(args[6])));
+	public void execute(EntityPlayer player, String[] args) throws Exception {
+		player.sendPacket(new ServerPlayBuiltinSoundPacket(BuiltinSound.valueOf(args[0]), SoundCategory.valueOf(args[1]), Double.parseDouble(args[2]), Double.parseDouble(args[3]), Double.parseDouble(args[4]), Float.parseFloat(args[5]), Float.parseFloat(args[6])));
 	}
 	
 	@Override
-	public String[] onTabComplete(int index) {
+	public String[] onTabComplete(EntityPlayer player, int index) {
 		if(index == 0) {
 			return enumArrayToStringArray(BuiltinSound.class);
 		}
-		if(index == 1) {
+		else if(index == 1) {
 			return enumArrayToStringArray(SoundCategory.class);
+		}
+		else if(index == 2) {
+			return doubleConvert(player.getLocation().getX());
+		}
+		else if(index == 3) {
+			return doubleConvert(player.getLocation().getY());
+		}
+		else if(index == 4) {
+			return doubleConvert(player.getLocation().getZ());
+		}
+		else if(index == 5 || index == 6) {
+			return doubleConvert(1);
 		}
 		return null;
 	}
-
+	
+	
 }

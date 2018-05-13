@@ -2,7 +2,7 @@ package org.golde.test.commands;
 
 import java.util.Arrays;
 
-import com.github.steveice10.packetlib.Session;
+import org.golde.test.entities.EntityPlayer;
 
 public class CommandTest extends Command{
 
@@ -12,8 +12,8 @@ public class CommandTest extends Command{
 	}
 
 	@Override
-	public void execute(Session session, String[] args) {
-		sendChatMessage(session, "This is a test command! Args: " + Arrays.toString(args));
+	public void execute(EntityPlayer player, String[] args) {
+		player.sendChatMessage("This is a test command! Args: " + Arrays.toString(args));
 	}
 
 }

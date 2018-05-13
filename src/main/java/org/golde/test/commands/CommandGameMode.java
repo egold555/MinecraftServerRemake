@@ -1,9 +1,10 @@
 package org.golde.test.commands;
 
+import org.golde.test.entities.EntityPlayer;
+
 import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
 import com.github.steveice10.mc.protocol.data.game.world.notify.ClientNotification;
 import com.github.steveice10.mc.protocol.packet.ingame.server.world.ServerNotifyClientPacket;
-import com.github.steveice10.packetlib.Session;
 
 public class CommandGameMode extends Command {
 
@@ -18,14 +19,14 @@ public class CommandGameMode extends Command {
 	}
 
 	@Override
-	public void execute(Session session, String[] args) {
+	public void execute(EntityPlayer player, String[] args) {
 		GameMode gm = GameMode.valueOf(args[0]);
-		session.send(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
-		sendChatMessage(session, "Updated gamemode to: " + gm.name());
+		player.sendPacket(new ServerNotifyClientPacket(ClientNotification.CHANGE_GAMEMODE, gm));
+		player.sendChatMessage("Updated gamemode to: " + gm.name());
 	}
 
 	@Override
-	public String[] onTabComplete(int index) {
+	public String[] onTabComplete(EntityPlayer player, int index) {
 		return enumArrayToStringArray(GameMode.class);
 	}
 

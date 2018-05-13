@@ -5,20 +5,25 @@ public class Location {
 	private double x;
 	private double y;
 	private double z;
-	private double yaw;
-	private double pitch;
+	private float yaw;
+	private float pitch;
 	boolean onGround;
 	
 	public Location(double x, double y, double z) {
 		this(x, y, z, 0, 0);
 	}
 	
-	public Location(double x, double y, double z, double yaw, double pitch) {
+	public Location(double x, double y, double z, float yaw, float pitch) {
+		this(x, y, z, yaw, pitch, false);
+	}
+	
+	public Location(double x, double y, double z, float yaw, float pitch, boolean onGround) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
 		this.yaw = yaw;
 		this.pitch = pitch;
+		this.onGround = onGround;
 	}
 
 	public double getX() {
@@ -45,19 +50,19 @@ public class Location {
 		this.z = z;
 	}
 
-	public double getYaw() {
+	public float getYaw() {
 		return yaw;
 	}
 
-	public void setYaw(double yaw) {
+	public void setYaw(float yaw) {
 		this.yaw = yaw;
 	}
 
-	public double getPitch() {
+	public float getPitch() {
 		return pitch;
 	}
 
-	public void setPitch(double pitch) {
+	public void setPitch(float pitch) {
 		this.pitch = pitch;
 	}
 	
