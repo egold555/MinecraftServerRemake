@@ -24,6 +24,7 @@ import org.golde.test.commands.CommandPlaySound;
 import org.golde.test.commands.CommandSummon;
 import org.golde.test.commands.CommandTeleport;
 import org.golde.test.commands.CommandTest;
+import org.golde.test.commands.CommandTime;
 import org.golde.test.entities.Entity;
 import org.golde.test.entities.EntityPlayer;
 import org.golde.test.util.Location;
@@ -92,6 +93,7 @@ import com.github.steveice10.packetlib.event.server.SessionRemovedEvent;
 import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
 import com.github.steveice10.packetlib.packet.Packet;
+import com.github.steveice10.packetlib.packet.PacketHeader;
 import com.github.steveice10.packetlib.tcp.TcpSessionFactory;
 
 
@@ -125,24 +127,11 @@ public class SingleInstance {
 			public void loggedIn(Session session) {
 				//DO NOT TOUCH
 
-				//get new id, and add them as a new entity to the server
 				final int entityId = getFreeEntityId();
 				Location spawnLocation = new Location(0, 255, 0);
 				final EntityPlayer player = new EntityPlayer(entityId, spawnLocation, session);
-				entities.put(entityId, player);
-
-				//http://wiki.vg/Protocol_FAQ#What.27s_the_normal_login_sequence_for_a_client.3F
-				session.send(new ServerJoinGamePacket(entityId, false, GameMode.CREATIVE, 0, Difficulty.PEACEFUL, 100, WorldType.DEFAULT, false));
-				//session.send(new ServerPluginMessagePacket("MC|Brand", "vanilla".getBytes()));
-				session.send(new ServerDifficultyPacket(Difficulty.PEACEFUL));
-				session.send(new ServerSpawnPositionPacket(new Position((int)spawnLocation.getX(), (int)spawnLocation.getY(), (int)spawnLocation.getZ())));
-				//http://wiki.vg/Protocol#Entity_Properties
-				session.send(new ServerPlayerAbilitiesPacket(true, true, true, true, 0.05F, 0.100000001490116f));
-				session.send(new ServerPlayerPositionRotationPacket(5, 255, 5, 0, 0, 0, new PositionElement[0]));
-
-
-
-				Log.info(player.getName() + " joined the game");
+				
+				PacketManager.Handlers.handleClientJoinGame(player, spawnLocation);
 
 				//Fooling around
 				session.send(new ServerBossBarPacket(UUID.randomUUID(), BossBarAction.ADD, new TextMessage("Testing123"), 0.4f, BossBarColor.YELLOW, BossBarDivision.NOTCHES_10, false, false));
@@ -173,13 +162,6 @@ public class SingleInstance {
 					}
 				}
 
-				PacketManager.Players.sendChatMessageToEveryone(new TextMessage(player.getName() + " joined the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
-				PacketManager.Players.sendPacketToEveryone(new ServerPlayerListEntryPacket(PlayerListEntryAction.ADD_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
-				
-				for(Packet packet : player.getSpawnPackets()) {
-					PacketManager.Players.sendPacketToEveryoneExcept(player, packet);
-				}
-
 			}
 		});
 
@@ -201,35 +183,26 @@ public class SingleInstance {
 						
 						
 						if(event.getPacket() instanceof ClientPlayerPositionPacket) {
-							ClientPlayerPositionPacket packet = event.getPacket();
-							player.setLocation(new Location(packet.getX(), packet.getY(), packet.getZ(), player.getLocation().getYaw(), player.getLocation().getPitch(), packet.isOnGround()));
+							PacketManager.Handlers.handleClientPlayerPositionPacket((ClientPlayerPositionPacket) event.getPacket(), player);
 						}
 						
 						if(event.getPacket() instanceof ClientPlayerPositionRotationPacket) {
-							ClientPlayerPositionRotationPacket packet = event.getPacket();
-							player.setLocation(new Location(packet.getX(), packet.getY(), packet.getZ(), (float)packet.getYaw(), (float)packet.getPitch(), packet.isOnGround()));
+							PacketManager.Handlers.handleClientPlayerPositionRotationPacket((ClientPlayerPositionRotationPacket) event.getPacket(), player);
 						}
 						
 						if(event.getPacket() instanceof ClientPlayerRotationPacket) {
-							ClientPlayerRotationPacket packet = event.getPacket();
-							player.setLocation(new Location(player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ(), (float)packet.getYaw(), (float)packet.getPitch(), player.getLocation().isOnGround()));
+							PacketManager.Handlers.handleClientPlayerRotationPacket((ClientPlayerRotationPacket) event.getPacket(), player);
 						}
-
+						
+						if(event.getPacket() instanceof ClientPlayerMovementPacket) {
+							PacketManager.Handlers.handleClientPlayerMovementPacket((ClientPlayerMovementPacket) event.getPacket(), player);
+						}
 
 						if(event.getPacket() instanceof ClientPluginMessagePacket) {
-							
-							for(EntityPlayer other : getOnlinePlayers()) {
-								for(Packet packet : other.getSpawnPackets()) {
-									PacketManager.Players.sendPacketToEveryoneExcept(other, packet);
-								}
-							}
-							
+							PacketManager.Handlers.handleClientPluginMessagePacket((ClientPluginMessagePacket) event.getPacket(), player);
 						}
 
-						if(event.getPacket() instanceof ClientPlayerMovementPacket) {
-							ClientPlayerMovementPacket packet = event.getPacket();
-							player.setLocation(new Location(packet.getX(), packet.getY(), packet.getZ(), (float)packet.getYaw(), (float)packet.getPitch()));
-						}
+						
 
 
 
@@ -237,95 +210,16 @@ public class SingleInstance {
 							ClientChatPacket packet = event.getPacket();
 
 							if(packet.getMessage().charAt(0) == '/') {
-								for(Command cmd : commands) {
-									String comm = packet.getMessage().substring(1, packet.getMessage().length());
-									String[] split = StringUtils.splitBySpace(comm);
-									if(cmd.getName().equalsIgnoreCase(split[0])) {
-										String[] args = StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1);
-										if(args.length < cmd.getArgs().length) {
-											cmd.notEnoughArgs(getPlayer(event.getSession()));
-											return;
-										}
-										try {
-											cmd.execute(getPlayer(event.getSession()), args);
-											return;
-										} catch (Exception e) {
-											event.getSession().send(new ServerChatPacket(new TextMessage(ExceptionUtils.getMessage(e))));
-											cmd.notEnoughArgs(getPlayer(event.getSession()));
-											e.printStackTrace();
-											return;
-										}
-
-
-									}
-								}
-
-								event.getSession().send(new ServerChatPacket(new TextMessage("Unknown command!")));
-								return;
+								PacketManager.Handlers.handleClientChatPacketCommand(packet, player);
+							} 
+							else {
+								PacketManager.Handlers.handleClientChatPacketChat(packet, player);
 							}
-
-							if(packet.getMessage().equalsIgnoreCase("test")) {
-								event.getSession().send(new ServerTitlePacket("Title", false));
-								event.getSession().send(new ServerTitlePacket("Sub", true));
-								event.getSession().send(new ServerChatPacket(new TextMessage("Executed.")));
-								event.getSession().send(new ServerSpawnMobPacket(1, UUID.randomUUID(), MobType.GUARDIAN, 5, 255, 5, 0, 0, 0, 0, 0, 0, new EntityMetadata[0]));
-								event.getSession().send(new ServerPlayBuiltinSoundPacket(BuiltinSound.ENTITY_ENDERDRAGON_AMBIENT, SoundCategory.HOSTILE, 5, 255, 5, 1, 1));
-								return;
-							}
-
-							GameProfile profile = event.getSession().getFlag(MinecraftConstants.PROFILE_KEY);
-							Log.info("[CHAT] " + profile.getName() + ": " + packet.getMessage());
-							Message msg = new TextMessage("Hello, ").setStyle(new MessageStyle().setColor(ChatColor.GREEN));
-							Message name = new TextMessage(profile.getName()).setStyle(new MessageStyle().setColor(ChatColor.AQUA).addFormat(ChatFormat.UNDERLINED));
-							Message end = new TextMessage("!");
-							msg.addExtra(name);
-							msg.addExtra(end);
-							event.getSession().send(new ServerChatPacket(msg));
+							
 						}
 
 						if(event.getPacket() instanceof ClientTabCompletePacket) {
-							ClientTabCompletePacket packet = event.getPacket();
-							String rawText = packet.getText();
-
-							if(rawText.length() >= 1 && rawText.charAt(0) == '/' && !rawText.contains(" ")) {
-								List<String> sortedCommands =new ArrayList<String>();
-								for(int i=0; i < commands.size(); i++) {
-									if(commands.get(i).getName().toLowerCase().startsWith(rawText.substring(1, rawText.length()).toLowerCase())) {
-										sortedCommands.add("/" + commands.get(i).getName());
-									}
-								}
-								event.getSession().send(new ServerTabCompletePacket(sortedCommands.toArray(new String[0])));
-								return;
-							}
-
-							String[] split = StringUtils.splitBySpace(rawText.substring(1, packet.getText().length()));
-							for(Command cmd : commands) {
-								if(cmd.getName().equalsIgnoreCase(split[0])){
-									String[] args = StringUtils.nudgeArrayDownByXRemovingFirstToLast(split, 1);
-									int argumentIndex = args.length - 1;
-									if (rawText.endsWith(" ")) {
-										argumentIndex += 1;
-									}
-
-									String[] toSend = cmd.onTabComplete(getPlayer(event.getSession()), argumentIndex);
-									if(toSend != null) {
-										if (rawText.endsWith(" ")) {
-											event.getSession().send(new ServerTabCompletePacket(toSend));
-										}
-										else {
-											String lastSplit = split[split.length -1];
-											List<String> sortedArgs =new ArrayList<String>();
-											for(int i=0; i < toSend.length; i++) {
-												if(toSend[i].toLowerCase().startsWith(lastSplit.toLowerCase())) {
-													sortedArgs.add(toSend[i]);
-												}
-											}
-											event.getSession().send(new ServerTabCompletePacket(sortedArgs.toArray(new String[0])));
-										}
-										return;
-									}
-								}
-							}
+							PacketManager.Handlers.handelClientTabCompletePacket((ClientTabCompletePacket) event.getPacket(), player);
 						}
 					}
 				});
@@ -335,17 +229,7 @@ public class SingleInstance {
 			public void sessionRemoved(SessionRemovedEvent event) {
 				MinecraftProtocol protocol = (MinecraftProtocol) event.getSession().getPacketProtocol();
 				if(protocol.getSubProtocol() == SubProtocol.GAME) {
-
-					EntityPlayer player = getPlayer(event.getSession());
-
-					//remove player from tab list and from game with packets
-					PacketManager.Players.sendPacketToEveryone(new ServerPlayerListEntryPacket(PlayerListEntryAction.REMOVE_PLAYER, new PlayerListEntry[] {new PlayerListEntry(player.getGameProfile(), GameMode.CREATIVE, 1, new TextMessage(player.getName()))}));
-					for(EntityPlayer other : getOnlinePlayers()) {
-						other.sendChatMessage(new TextMessage(player.getName() + " left the game.").setStyle(new MessageStyle().setColor(ChatColor.LIGHT_PURPLE)));
-					}
-
-					Log.info(player.getName() + " left the game");
-					entities.remove(getPlayer(event.getSession()).getId());
+					PacketManager.Handlers.handleClientDisconnect(getPlayer(event.getSession()));
 				}
 			}
 		});
@@ -356,6 +240,7 @@ public class SingleInstance {
 		commands.add(new CommandSummon());
 		commands.add(new CommandPlaySound());
 		commands.add(new CommandTeleport());
+		commands.add(new CommandTime());
 
 		commands.add(new CommandHelp(commands));
 
@@ -398,6 +283,10 @@ public class SingleInstance {
 	
 	public List<Command> getCommands() {
 		return commands;
+	}
+	
+	public HashMap<Integer, Entity> getEntities() {
+		return entities;
 	}
 
 }
